@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Videos</title>
   <link rel="icon" href="https://fav.farm/🔥" />
 </head>
+
 <body>
-  <ul class="videos">
+  <ul id='videos' class="videos">
     <li data-time="5:43">
       Video 1
     </li>
@@ -182,7 +184,50 @@
       Video 58
     </li>
   </ul>
-<script>
-</script>
+  <div class="total" id="total"></div>
+  <script>
+    // const timeNodes = Array.from(document.querySelectorAll('[data-time]'))
+    // // console.log(timeNodes)
+    // const seconds = timeNodes.map(node => node.dataset.time).map(timeCode => {
+    //   const [mins, secs] = timeCode.split(':').map(parseFloat)
+    //   return (mins * 60) + secs
+
+    //   console.log(mins, secs)
+    // })
+    //   .reduce((total, vidSeconds) => total + vidSeconds)
+
+    // let secondsLeft = seconds;
+    // const hours = Math.floor(secondsLeft / 3600);
+    // secondsLeft = secondsLeft % 3600;
+
+    // const mins = Math.floor(secondsLeft / 60);
+    // secondsLeft = secondsLeft % 60;
+
+    // console.log(hours, mins, secondsLeft);
+
+    //optimized
+
+    // výpočet v jednom reduce, bez alokácií navyše
+    const list = document.getElementById('videos');
+    const nodes = list.querySelectorAll('[data-time]');
+
+    const totalSeconds = [...nodes].reduce((sum, el) => {
+      const t = el.dataset.time;                 // "m:ss" alebo "mm:ss"
+      const i = t.indexOf(':');                  // pozícia ':'
+      const mins = Number(t.slice(0, i));
+      const secs = Number(t.slice(i + 1));
+      return sum + mins * 60 + secs;
+    }, 0);
+
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+
+    // výstup bez innerHTML concat
+    const out = document.getElementById('total');
+    out.textContent = `Súčet: ${h}h ${m}m ${s}s`;
+    console.log({ hours: h, minutes: m, seconds: s, totalSeconds });
+  </script>
 </body>
+
 </html>
