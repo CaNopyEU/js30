@@ -38,6 +38,77 @@
 	</style>
 
 	<script>
+		// const hero = document.querySelector('.hero')
+		// const text = hero.querySelector('h1')
+		// const walk = 500; // 500px
+
+		// function shadow(e) {
+		// 	const { offsetWidth: width, offsetHeight: height } = hero
+		// 	let { offsetX: x, offsetY: y } = e
+
+		// 	if (this !== e.target) {
+		// 		x = x + e.target.offsetLeft
+		// 		y = y + e.target.offsetTop
+		// 	}
+
+		// 	const xWalk = (x / width * walk) - (walk / 2)
+		// 	const yWalk = (y / height * walk) - (walk / 2)
+
+		// 	text.style.textShadow = `
+    //   ${xWalk}px ${yWalk}px 0 rgba(255,0,255,0.7),
+    //   ${xWalk * -1}px ${yWalk}px 0 rgba(0,255,255,0.7),
+    //   ${yWalk}px ${xWalk * -1}px 0 rgba(0,255,0,0.7),
+    //   ${yWalk * -1}px ${xWalk}px 0 rgba(0,0,255,0.7)
+    // `
+		// 	console.log(xWalk, yWalk)
+		// }
+
+		// hero.addEventListener('mousemove', shadow)
+
+		// optimal version
+		const hero = document.querySelector('.hero');
+    const text = hero.querySelector('h1');
+
+    // tunable
+    let walk = Number(getComputedStyle(document.documentElement).getPropertyValue('--walk')) || 500;
+    const half = () => walk / 2;
+
+    // state
+    let rect = hero.getBoundingClientRect();
+    let px = 0, py = 0, dirty = false;
+
+    // recalc on resize (a scroll není potřeba, stránka je bez posunu)
+    addEventListener('resize', () => { rect = hero.getBoundingClientRect(); }, { passive: true });
+
+    // sběr událostí bez práce
+    hero.addEventListener('pointermove', (e) => {
+      px = e.clientX - rect.left;
+      py = e.clientY - rect.top;
+      dirty = true;
+    }, { passive: true });
+
+    // render smyčka
+    function tick() {
+      if (dirty) {
+        dirty = false;
+
+        // clamp pro jistotu při rychlém pohybu mimo box
+        const x = Math.max(0, Math.min(px, rect.width));
+        const y = Math.max(0, Math.min(py, rect.height));
+
+        const xWalk = (x / rect.width)  * walk - half();
+        const yWalk = (y / rect.height) * walk - half();
+
+        // bez zbytečných mezer a alokací
+        text.style.textShadow =
+          `${xWalk}px ${yWalk}px 0 rgba(255,0,255,.7),
+           ${-xWalk}px ${yWalk}px 0 rgba(0,255,255,.7),
+           ${yWalk}px ${-xWalk}px 0 rgba(0,255,0,.7),
+           ${-yWalk}px ${xWalk}px 0 rgba(0,0,255,.7)`;
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
 	</script>
 </body>
 
