@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Sort Without Articles</title>
   <link rel="icon" href="https://fav.farm/🔥" />
 </head>
+
 <body>
 
   <style>
@@ -41,16 +43,46 @@
       color: #ffc600;
       text-decoration: none;
     }
-
   </style>
 
   <ul id="bands"></ul>
 
-<script>
-const bands = ['The Plot in You', 'The Devil Wears Prada', 'Pierce the Veil', 'Norma Jean', 'The Bled', 'Say Anything', 'The Midway State', 'We Came as Romans', 'Counterparts', 'Oh, Sleeper', 'A Skylit Drive', 'Anywhere But Here', 'An Old Dog'];
+  <script>
 
+    // function strip(str) {
+    //   str.replace(/^(a |the |an )/i, '').trim()
+    // }
 
-</script>
+    // const bands = ['The Plot in You', 'The Devil Wears Prada', 'Pierce the Veil', 'Norma Jean', 'The Bled', 'Say Anything', 'The Midway State', 'We Came as Romans', 'Counterparts', 'Oh, Sleeper', 'A Skylit Drive', 'Anywhere But Here', 'An Old Dog'];
+
+    // const sortedBands = bands.sort((a, b) => strip(a) > strip(b) ? 1 : -1)
+
+    // document.querySelector('#bands').innerHTML = sortedBands.map(band => `<li>${band}</li>`).join('')
+
+    const ARTICLES_RE = /^(?:the|a|an)\s+/i;
+    const normalize = s => s.replace(ARTICLES_RE, '').trim();
+    const collator = new Intl.Collator('en', { sensitivity: 'base' });
+
+    const bands = [
+      'The Plot in You', 'The Devil Wears Prada', 'Pierce the Veil', 'Norma Jean',
+      'The Bled', 'Say Anything', 'The Midway State', 'We Came as Romans',
+      'Counterparts', 'Oh, Sleeper', 'A Skylit Drive', 'Anywhere But Here', 'An Old Dog'
+    ];
+
+    // předpočítej klíče → méně regexů v komparátoru
+    const items = bands.map(label => ({ label, key: normalize(label) }))
+      .sort((a, b) => collator.compare(a.key, b.key));
+
+    // bezpečný a rychlý render bez innerHTML
+    const ul = document.getElementById('bands');
+    const frag = document.createDocumentFragment();
+    for (const { label } of items) {
+      const li = document.createElement('li');
+      li.textContent = label;
+      frag.appendChild(li);
+    }
+    ul.appendChild(frag);
+  </script>
 
 </body>
 </html>
