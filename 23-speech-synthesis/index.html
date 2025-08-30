@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Speech Synthesis</title>
@@ -7,36 +8,197 @@
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="https://fav.farm/🔥" />
 </head>
+
 <body>
 
-    <div class="voiceinator">
+  <div class="voiceinator">
 
-      <h1>The Voiceinator 5000</h1>
+    <h1>The Voiceinator 5000</h1>
 
-      <select name="voice" id="voices">
-        <option value="">Select A Voice</option>
-      </select>
+    <select name="voice" id="voices">
+      <option value="">Select A Voice</option>
+    </select>
 
-      <label for="rate">Rate:</label>
-      <input name="rate" type="range" min="0" max="3" value="1" step="0.1">
+    <label for="rate">Rate:</label>
+    <input name="rate" type="range" min="0" max="3" value="1" step="0.1">
 
-      <label for="pitch">Pitch:</label>
+    <label for="pitch">Pitch:</label>
 
-      <input name="pitch" type="range" min="0" max="2" step="0.1">
-      <textarea name="text">Hello! I love JavaScript 👍</textarea>
-      <button id="stop">Stop!</button>
-      <button id="speak">Speak</button>
+    <input name="pitch" type="range" min="0" max="2" step="0.1">
+    <textarea name="text">Hello! I love JavaScript 👍</textarea>
+    <button id="stop">Stop!</button>
+    <button id="speak">Speak</button>
 
-    </div>
+  </div>
 
-<script>
-  const msg = new SpeechSynthesisUtterance();
-  let voices = [];
-  const voicesDropdown = document.querySelector('[name="voice"]');
-  const options = document.querySelectorAll('[type="range"], [name="text"]');
-  const speakButton = document.querySelector('#speak');
-  const stopButton = document.querySelector('#stop');
-</script>
+  <!-- <script>
+    const msg = new SpeechSynthesisUtterance();
+    let voices = [];
+    const voicesDropdown = document.querySelector('[name="voice"]');
+    const options = document.querySelectorAll('[type="range"], [name="text"]');
+    const speakButton = document.querySelector('#speak');
+    const stopButton = document.querySelector('#stop');
 
+    msg.text = document.querySelector('[name="text"]').value
+
+    function populateVoices() {
+      voices = this.getVoices()
+      voicesDropdown.innerHTML = voices.map(voice => `<option value="${voice.name}">${voice.name} (${voice.lang})</option>`).join('')
+    }
+
+    function setVoice() {
+      msg.voice = voices.find(voice => voice.name === this.value)
+      toggle()
+    }
+
+    function toggle(startOver = true) {
+      speechSynthesis.cancel()
+      if (startOver) {
+        speechSynthesis.speak(msg)
+      }
+    }
+
+    function setOption() {
+      console.log(this.name, this.value)
+      msg[this.name] = this.value
+      toggle()
+    }
+
+    speechSynthesis.addEventListener('voiceschanged', populateVoices)
+    voicesDropdown.addEventListener('change', setVoice)
+    options.forEach(option => option.addEventListener('change', setOption))
+    speakButton.addEventListener('click', toggle)
+    stopButton.addEventListener('click', () => toggle(false))
+  </script> -->
+
+
+  <script>
+    const msg = new SpeechSynthesisUtterance();
+    const voiceSel = document.querySelector('[name="voice"]');
+    const controls = document.querySelectorAll('[type="range"], [name="text"]');
+    const speakBtn = document.querySelector('#speak');
+    const stopBtn = document.querySelector('#stop');
+
+    // persist nastavení
+    const store = {
+      get: (k, d) => JSON.parse(localStorage.getItem(k) ?? 'null') ?? d,
+      set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
+    };
+
+    // init z uložených hodnôt
+    (function initFromStorage() {
+      const text = store.get('tts:text', '');
+      const rate = store.get('tts:rate', 1);
+      const pitch = store.get('tts:pitch', 1);
+      const volume = store.get('tts:volume', 1);
+      const t = document.querySelector('[name="text"]');
+      if (t && text) t.value = text;
+      controls.forEach(c => {
+        if (c.name === 'rate') c.value = rate;
+        if (c.name === 'pitch') c.value = pitch;
+        if (c.name === 'volume') c.value = volume;
+      });
+      msg.text = t?.value || '';
+      msg.rate = rate; msg.pitch = pitch; msg.volume = volume;
+    })();
+
+    let voices = [];
+    let selectedVoiceName = store.get('tts:voice', null);
+
+    function populateVoices() {
+      const list = speechSynthesis.getVoices();
+      if (!list || list.length === 0) return; // počkaj na ďalší event
+      voices = list.slice().sort((a, b) =>
+        (a.lang || '').localeCompare(b.lang || '') || (a.name || '').localeCompare(b.name || '')
+      );
+
+      // vyčisti a naplň
+      voiceSel.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      for (const v of voices) {
+        const opt = document.createElement('option');
+        opt.value = v.name;
+        opt.textContent = `${v.name} (${v.lang})${v.default ? ' • default' : ''}`;
+        frag.appendChild(opt);
+      }
+      voiceSel.appendChild(frag);
+
+      // zvoľ predvoľbu alebo uložený hlas
+      const match = voices.find(v => v.name === selectedVoiceName)
+        || voices.find(v => v.default)
+        || voices[0];
+      if (match) {
+        voiceSel.value = match.name;
+        msg.voice = match;
+      }
+    }
+
+    // niekedy event nepríde → polling, kým neprídu hlasy
+    (function ensureVoices() {
+      if (speechSynthesis.getVoices().length) populateVoices();
+      else {
+        speechSynthesis.addEventListener('voiceschanged', populateVoices, { once: true });
+        let tries = 0;
+        const id = setInterval(() => {
+          tries++;
+          if (speechSynthesis.getVoices().length || tries > 20) {
+            clearInterval(id);
+            populateVoices();
+          }
+        }, 100);
+      }
+    })();
+
+    function setVoice() {
+      const v = voices.find(voice => voice.name === this.value);
+      if (!v) return;
+      msg.voice = v;
+      selectedVoiceName = v.name;
+      store.set('tts:voice', v.name);
+      speakDebounced(); // okamžitý re-speak so zvoleným hlasom
+    }
+
+    // debounce, aby sa nevolal speak príliš často pri posuvníkoch
+    let tId = 0;
+    function speakDebounced() {
+      clearTimeout(tId);
+      tId = setTimeout(() => {
+        speechSynthesis.cancel();
+        if ((msg.text || '').trim()) speechSynthesis.speak(msg);
+      }, 120);
+    }
+
+    function setOption() {
+      // normalizácia a ukladanie
+      if (this.name === 'text') {
+        msg.text = this.value;
+        store.set('tts:text', this.value);
+      } else {
+        const val = Number(this.value);
+        msg[this.name] = val;
+        store.set(`tts:${this.name}`, val);
+      }
+      speakDebounced();
+    }
+
+    function speak() {
+      speechSynthesis.cancel();
+      if ((msg.text || '').trim()) speechSynthesis.speak(msg);
+    }
+    function stop() {
+      speechSynthesis.cancel();
+    }
+
+    voiceSel.addEventListener('change', setVoice);
+    controls.forEach(c => c.addEventListener('input', setOption));  // plynulé
+    speakBtn.addEventListener('click', speak);
+    stopBtn.addEventListener('click', stop);
+
+    // pozastav pri skrytí tabu
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) speechSynthesis.cancel();
+    });
+  </script>
 </body>
+
 </html>
