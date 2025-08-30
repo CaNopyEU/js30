@@ -32,7 +32,7 @@ a {
   border-radius: 20px;
 }
 
-.highlight {
+/* .highlight {
   transition: all 0.2s;
   border-bottom: 2px solid white;
   position: absolute;
@@ -43,7 +43,18 @@ a {
   border-radius: 20px;
   display: block;
   box-shadow: 0 0 10px rgba(0,0,0,0.2);
+} */
+
+.highlight {
+  position: fixed; inset: 0 auto auto 0;
+  pointer-events: none; z-index: 9999;
+  border: 2px solid #ffc600; border-radius: 4px;
+  background: rgba(255,198,0,.15);
+  transform: translate(-9999px,-9999px);
+  transition: transform .15s, width .15s, height .15s, opacity .15s;
+  opacity: 0; will-change: transform, width, height;
 }
+.highlight--show { opacity: 1; }
 
 .menu {
   padding: 0;
