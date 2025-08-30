@@ -9,13 +9,102 @@
 
 <body>
 
-  <div class="words" contenteditable>
+  <div class="words" id="words" contenteditable>
   </div>
 
   <script>
-    window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    // window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+    // const recognition = new SpeechRecognition()
+    // recognition.interimResults = true
 
+    // let p = document.createElement('p')
+    // const words = document.querySelector('.words')
+    // words.appendChild(p)
+
+    // recognition.addEventListener('result', (e) => {
+    //   const transcript = Array.from(e.results)
+    //     .map(result => result[0])
+    //     .map(result => result.transcript)
+    //     .join('')
+
+    //     p.textContent = transcript
+    //     if(e.results[0].isFinal) {
+    //       p = document.createElement('p')
+    //       words.appendChild(p)
+    //     }
+    //     if(transcript.includes('unicorn')) {
+    //       console.log('💩 💩 💩')
+    //     }
+    //   console.log(transcript)
+
+    // })
+    // recognition.addEventListener('end', recognition.start)
+
+    // recognition.start()
+
+    //OPTIMIZED
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      document.getElementById('words').textContent = 'SpeechRecognition nie je podporované.';
+    } else {
+      const recognition = new SR();
+      console.log(navigator.language)
+      recognition.lang = navigator.language || 'sk-SK';
+      recognition.interimResults = true;
+      recognition.continuous = true; // de-facto štandard v Chrome
+      recognition.maxAlternatives = 1;
+
+      const words = document.getElementById('words');
+      let p = document.createElement('p');
+      words.appendChild(p);
+
+      // rAF batching pre interim text
+      let pendingText = '';
+      let dirty = false;
+      function flush() {
+        if (dirty) {
+          p.textContent = pendingText;
+          dirty = false;
+        }
+        requestAnimationFrame(flush);
+      }
+      requestAnimationFrame(flush);
+
+      recognition.onresult = (e) => {
+        // spracuj len nové výsledky
+        let isFinal = false;
+        let text = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const res = e.results[i];
+          text += res[0].transcript;
+          if (res.isFinal) isFinal = true;
+        }
+        pendingText = text;
+        dirty = true;
+
+        // príklad trigeru
+        if (/unicorn/i.test(text)) console.log('💩 💩 unicorn 💩 💩');
+
+        if (isFinal) {
+          p = document.createElement('p');
+          words.appendChild(p);
+          pendingText = '';
+        }
+      };
+
+      // bezpečný autorestart len pri aktívnom okne
+      let shouldRun = true;
+      recognition.onend = () => { if (shouldRun && !document.hidden) recognition.start(); };
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { shouldRun = false; recognition.stop(); }
+        else { shouldRun = true; recognition.start(); }
+      });
+
+      // štart
+      recognition.start();
+    }
   </script>
 
 
