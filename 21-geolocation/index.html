@@ -59,7 +59,125 @@
     }
     /*Compass: https://thenounproject.com/search/?q=compass&i=592352*/
   </style>
+  <!-- <script>
+    const arrow = document.querySelector('.arrow')
+    const speed = document.querySelector('.speed-value')
+
+    navigator.geolocation.watchPosition((data)=> {
+      console.log(data)
+      speed.textContent = data.coords.speed
+      arrow.style.transform = `rotate(${data.coords.heading}deg)`
+    }, (err) => {
+      console.err(err)
+      alert('Hey, enable location!!!')
+    })
+  </script> -->
   <script>
+    //OPTIMIZED!!!
+    const arrow = document.querySelector('.arrow');
+    const speedEl = document.querySelector('.speed-value');
+  
+    // options: better accuracy, avoid stale cache
+    const opts = { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 };
+  
+    // state for smoothing and fallback heading
+    let watchId = null;
+    let prev = null;              // {lat, lon, ts}
+    let smoothSpeed = 0;          // m/s
+    const alpha = 0.2;            // EMA factor
+  
+    // helpers
+    const toRad = d => d * Math.PI / 180;
+    const toDeg = r => r * 180 / Math.PI;
+  
+    // initial bearing from two points
+    function bearing(from, to) {
+      const φ1 = toRad(from.lat), φ2 = toRad(to.lat);
+      const λ1 = toRad(from.lon), λ2 = toRad(to.lon);
+      const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
+      const x = Math.cos(φ1)*Math.cos(φ2)*Math.cos(λ2 - λ1) - Math.sin(φ1)*Math.sin(φ2);
+      const brng = (toDeg(Math.atan2(y, x)) + 360) % 360;
+      return brng;
+    }
+  
+    function applyDOM(speedMS, headingDeg) {
+      // decouple DOM writes from geolocation event
+      requestAnimationFrame(() => {
+        const kmh = speedMS * 3.6;
+        speedEl.textContent = Number.isFinite(kmh) ? `${kmh.toFixed(1)} km/h` : '—';
+        if (Number.isFinite(headingDeg)) {
+          arrow.style.transform = `rotate(${headingDeg}deg)`;
+        }
+      });
+    }
+  
+    function onPos(pos) {
+      const { latitude, longitude, speed, heading } = pos.coords;
+      const ts = pos.timestamp;
+  
+      // smooth speed (fallback compute if missing)
+      let s = Number.isFinite(speed) ? speed : NaN;
+  
+      if (prev) {
+        const dt = (ts - prev.ts) / 1000; // s
+        if (dt > 0) {
+          const R = 6371000;
+          const φ1 = toRad(prev.lat), φ2 = toRad(latitude);
+          const Δφ = φ2 - φ1, Δλ = toRad(longitude - prev.lon);
+          const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+          const dist = 2 * R * Math.asin(Math.sqrt(a)); // meters
+          if (!Number.isFinite(s)) s = dist / dt;       // m/s
+        }
+      }
+  
+      if (!Number.isFinite(s)) s = 0;
+      smoothSpeed = smoothSpeed ? (alpha*s + (1-alpha)*smoothSpeed) : s;
+  
+      // heading fallback if missing
+      let h = Number.isFinite(heading) ? heading : NaN;
+      if (prev && !Number.isFinite(h)) {
+        h = bearing(prev, { lat: latitude, lon: longitude });
+      }
+  
+      applyDOM(smoothSpeed, h);
+      prev = { lat: latitude, lon: longitude, ts };
+    }
+  
+    function onErr(err) {
+      console.error(err);
+      alert('Location failed. Enable GPS and permissions.');
+    }
+  
+    function start() {
+      if (watchId != null) return;
+      if (!('geolocation' in navigator)) {
+        alert('Geolocation not supported.');
+        return;
+      }
+      watchId = navigator.geolocation.watchPosition(onPos, onErr, opts);
+    }
+  
+    function stop() {
+      if (watchId != null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+    }
+  
+    // start/stop with tab visibility to save battery
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stop(); else start();
+    });
+  
+    // optional: preflight permission check
+    if (navigator.permissions?.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then(p => {
+        if (p.state === 'denied') alert('Allow location access.');
+        start();
+      }).catch(start);
+    } else {
+      start();
+    }
   </script>
 </body>
 </html>
